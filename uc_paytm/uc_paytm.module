@@ -1,0 +1,334 @@
+<?php
+/*
+*	uc_paytm.module
+*	Upgraded to support: Drupal 7 & Ubercart 3.0
+*	Updated by : Karthi perumal, Samvit Technologies.
+*	date : 19-09-2011
+*
+* @file
+* Integrates ebs's redirected payment service.
+*/
+require_once DRUPAL_ROOT . '/' . drupal_get_path('module', 'uc_paytm') . "/uc_encdec_paytm.php";
+
+
+/**
+ * Implements hook_menu().
+ */
+function uc_paytm_menu() {
+  $items = array();
+
+  $items['cart/paytm/complete'] = array(
+    'title' => 'Order complete',
+    'page callback' => 'uc_paytm_complete',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+    'file' => 'uc_paytm.pages.inc',
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_init().
+ */
+function uc_paytm_init() {
+  global $conf;
+  $conf['i18n_variables'][] = 'uc_paytm_method_title';
+  $conf['i18n_variables'][] = 'uc_paytm_checkout_button';
+}
+
+/**
+ * Implements hook_ucga_display().
+ */
+function uc_paytm_ucga_display() {
+  // Tell UC Google Analytics to display the e-commerce JS on the custom
+  // order completion page for this module.
+  if (arg(0) == 'cart' && arg(1) == 'paytm' && arg(2) == 'complete') {
+    return TRUE;
+  }
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+function uc_paytm_form_alter(&$form, $form_state, $form_id) {
+  if ($form_id == 'uc_cart_checkout_review_form' && ($order_id = intval($_SESSION['cart_order'])) > 0) {
+	
+
+    $order = uc_order_load($order_id);
+    if ($order->payment_method == 'paytm') {
+      drupal_add_css(drupal_get_path('module', 'uc_paytm') . '/uc_paytm.css');
+      unset($form['actions']['submit']);
+      $form['#prefix'] = '<table id="two-checkout-review-table"><tr><td>';
+      $form['#suffix'] = '</td><td>' . drupal_render(drupal_get_form('uc_paytm_form', $order)) . '</td></tr></table>';
+    }
+  }
+}
+
+/**
+ * Implements hook_payment_method().
+ *
+ * @see uc_payment_method_paytm()
+ */
+function uc_paytm_uc_payment_method() {
+  $path = base_path() . drupal_get_path('module', 'uc_paytm');
+  $title = variable_get('uc_uc_paytm_method_title', t('Online Payment on a Secure Server:'));
+  $title .= '<br /><img src="' . $path . '/logo.gif" style="position: relative; left: 2.5em;" />';
+
+  $methods[] = array(
+    'id' => 'paytm',
+    'name' => t('paytm'),
+    'title' => $title,
+    'desc' => t('Redirect to paytm to pay by credit card or netbanking.'),
+    'callback' => 'uc_payment_uc_method_paytm',
+    'weight' => 3,
+    'checkout' => TRUE,
+    'no_gateway' => TRUE,
+  );
+
+  return $methods;
+}
+
+
+/**
+ * Add paytm settings to the payment method settings form.
+ *
+ * @see uc_paytm_uc_payment_method()
+ */
+function uc_payment_uc_method_paytm($op, &$order, $form = NULL, &$form_state = NULL) {
+  switch ($op) {
+	case 'cart-details':
+      if (variable_get('uc_paytm_check', FALSE)) {
+        if ($_SESSION['pay_method'] == 'CK') {
+          $sel = 'CK';
+        }
+        else {
+          $sel = 'CC';
+        }
+        unset($_SESSION['pay_method']);
+        $build = array(
+          '#type' => 'select',
+          '#title' => t('Select your payment type:'),
+          '#name' => 'pay_method',
+          '#id' => 'edit-pay-method',
+          '#attributes' => array('class' => array('form-select')),
+          '#default_value' => $sel,
+          '#options' => array(
+            'CC' => t('Credit card'),
+            'CK' => t('Online check'),
+          ),
+        );
+		return $build;
+      }
+      return;
+
+    case 'cart-process':
+		$_SESSION['pay_method'] = $form_state['values']['panes']['payment']['payment_method'];
+		return;
+
+    case 'settings':
+      $form['uc_paytm_accountid'] = array(
+        '#type' => 'textfield',
+        '#title' => t('paytm Merchant Id'),
+        '#description' => t('Your paytm Merchant Id.'),
+        '#default_value' => variable_get('uc_paytm_accountid', ''),
+        '#size' => 16,
+      );
+      $form['uc_paytm_secret_key'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Secret Key'),
+        '#description' => t('The secret key provided by paytm with your Account settings.'),
+        '#default_value' => variable_get('uc_paytm_secret_key', 'paytmsecretkey'),
+        '#size' => 16,
+      );
+      $form['uc_paytm_industry_type'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Industry Type'),
+        '#description' => t('The Industry Type provided by paytm with your Account settings.'),
+        '#default_value' => variable_get('uc_paytm_industry_type', 'paytmindustrytype'),
+        '#size' => 16,
+      );
+      
+      $form['uc_paytm_channel_id'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Channel ID'),
+        '#description' => t('The Channle ID provided by paytm with your Account settings.'),
+        '#default_value' => variable_get('uc_paytm_channel_id', 'paytmchannelid'),
+        '#size' => 16,
+      );
+
+      $form['uc_paytm_website_name'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Website Name'),
+        '#description' => t('The WebSite Name provided by paytm with your Account settings.'),
+        '#default_value' => variable_get('uc_paytm_secret_key', 'paytmwebsitename'),
+        '#size' => 16,
+      );
+
+      $form['uc_paytm_secret_key'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Secret Key'),
+        '#description' => t('The secret key provided by paytm with your Account settings.'),
+        '#default_value' => variable_get('uc_paytm_secret_key', 'paytmkey'),
+        '#size' => 16,
+      );
+	
+      $form['uc_paytm_method_title'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Payment method title'),
+        '#description' => t('This title will be shown at the checkout page.'),
+        '#default_value' => variable_get('uc_paytm_method_title', t('Online Payment on a Secure Server:')),
+      );
+      /*    $form['uc_paytm_method_title_icons'] = array(
+       '#type' => 'checkbox',
+       '#title' => t('Show credit card icons beside the payment method title.'),
+       '#default_value' => variable_get('uc_paytm_method_title_icons', TRUE),
+       ); */
+
+      $form['uc_paytm_checkout_button'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Order review submit button text'),
+        '#description' => t('Provide paytm specific text for the submit button on the order review page.'),
+        '#default_value' => variable_get('uc_paytm_checkout_button', t('Submit Order')),
+      );
+      $form['uc_paytm_checkout_mode'] = array(
+        '#type' => 'select',
+        '#title' => t('paytm checkout mode'),
+        '#description' => t('Mode of Transaction. Select TEST for Testing and select LIVE when your account is made LIVE from paytm'),
+        '#options' => array(
+          'TEST' => t('TEST'),
+          'LIVE' => t('LIVE'),
+        ),
+        '#default_value' => variable_get('uc_paytm_checkout_mode', 'TEST'),
+      );
+      return $form;
+  }
+}
+
+/**
+ * Form to build the submission to paytm.
+ */
+function uc_paytm_form($form, $form_state, $order) {
+  $country = uc_get_country_data(array('country_id' => $order->billing_country));
+  if ($country === FALSE) {
+    $country = array(0 => array('country_iso_code_3' => 'IND'));
+  }
+  $deliverycountry = uc_get_country_data(array('country_id' => $order->delivery_country));
+  if ($deliverycountry === FALSE) {
+    $deliverycountry = array(0 => array('country_iso_code_3' => 'IND'));
+  }
+
+	$dr =("DR={DR}");
+	
+	$account_id = variable_get('uc_paytm_accountid', '');
+	$secretkey = variable_get('uc_paytm_secret_key', '');
+	$amount = uc_currency_format($order->order_total, FALSE, FALSE, '.');
+	$ref_no = $order->order_id;
+	
+	$return_url =url('cart/paytm/complete/',array('absolute' => TRUE)). $order->order_id.'/DR={DR}';
+
+	
+	
+	$mode  =variable_get('uc_paytm_checkout_mode', '');
+
+	$hash = $secretkey."|".$account_id."|". $amount."|".$ref_no."|".$return_url."|".$mode ;
+	$secure_hash = md5($hash);
+   
+	$checksum_variables = Array(
+	    "MID" =>  variable_get('uc_paytm_accountid', ''),
+	    "ORDER_ID" =>  $order->order_id,
+	    "CUST_ID" => $order->billing_first_name,
+	    "TXN_AMOUNT" => uc_currency_format($order->order_total, FALSE, FALSE, '.'),
+	    "CHANNEL_ID" =>  variable_get('uc_paytm_channel_id', ''),
+	    "INDUSTRY_TYPE_ID" =>  variable_get('uc_paytm_industry_type', ''),
+	    "WEBSITE" =>  variable_get('uc_paytm_website_name', '')
+        );
+   $checksum = getChecksumFromArray($checksum_variables, variable_get('uc_paytm_secret_key', '')); 	
+
+ /* $data = array(
+    'account_id' => variable_get('uc_paytm_accountid', ''),
+    'mode' => variable_get('uc_paytm_checkout_mode', ''),
+    'amount' => uc_currency_format($order->order_total, FALSE, FALSE, '.'),
+    'cart_order_id' => $order->order_id,
+    'fixed' => 'Y',
+    'lang' => variable_get('uc_paytm_language', 'en'),
+    //'return_url' => url('cart/paytm/complete/' .  $order->order_id, array('absolute' => TRUE, 'fragment' => "DR={DR}")),
+    'return_url' => url('cart/paytm/complete/',array('absolute' => TRUE)). $order->order_id.'/DR={DR}', 
+
+    'reference_no' => $order->order_id,
+    'pay_method' => isset($_SESSION['pay_method']) ? $_SESSION['pay_method'] : 'CC',
+    'name' => substr($order->billing_first_name . ' ' . $order->billing_last_name, 0, 128),
+    'address' => substr($order->billing_street1, 0, 64) . " " . substr($order->billing_street2, 0, 64),
+    'city' => substr($order->billing_city, 0, 64),
+    'state' => uc_get_zone_code($order->billing_zone),
+    'postal_code' => substr($order->billing_postal_code, 0, 16),
+    'country' => $country[0]['country_iso_code_3'],
+    'email' => substr($order->primary_email, 0, 64),
+    'phone' => substr($order->billing_phone, 0, 16),
+    'ship_name' => substr($order->delivery_first_name . ' ' . $order->delivery_last_name, 0, 128),
+    'ship_address' => substr($order->delivery_street1, 0, 64) . " " . substr($order->delivery_street2, 0, 64),
+    'ship_city' => substr($order->delivery_city, 0, 64),
+    'ship_state' => uc_get_zone_code($order->delivery_zone),
+    'ship_postal_code' => substr($order->delivery_postal_code, 0, 16),
+    'ship_country' => $deliverycountry[0]['country_iso_code_3'],
+    'ship_phone' => substr($order->delivery_phone, 0, 16),
+    'secure_hash' => $secure_hash,
+    'id_type' => 1,
+  );*/
+
+  $post_variables = Array(
+    "MID" =>  variable_get('uc_paytm_accountid', ''),
+    "ORDER_ID" =>  $order->order_id,
+    "CUST_ID" => $order->billing_first_name,
+    "TXN_AMOUNT" => uc_currency_format($order->order_total, FALSE, FALSE, '.'),
+    "CHANNEL_ID" =>  variable_get('uc_paytm_channel_id', ''),
+    "INDUSTRY_TYPE_ID" =>  variable_get('uc_paytm_industry_type', ''),
+    "WEBSITE" =>  variable_get('uc_paytm_website_name', ''),
+    "txnDate" =>  date('Y-m-d H:i:s'),
+    'return_url' => url('cart/paytm/complete/',array('absolute' => TRUE)). $order->order_id.'/DR={DR}', 
+    "CHECKSUMHASH" => $checksum
+);
+
+  $i = 0;
+  global $desc;
+  $data['description'] = '';
+  foreach ($order->products as $product) {
+    $i++;
+    $data['c_prod_' . $i] = $product->model . ',' . $product->qty;
+    $data['c_name_' . $i] = $product->title;
+    $data['c_description_' . $i] = $desc;
+    $data['c_price_' . $i] = uc_currency_format($product->price, FALSE, FALSE, '.');
+    $data['description'] .= "-" . $product->title;
+  }
+
+  $form['#action'] = _paytm_post_url(variable_get('uc_paytm_checkout_mode', 'TEST'));
+
+  foreach ($post_variables as $name => $value) {
+    $form[$name] = array(
+      '#type' => 'hidden',
+      '#value' => $value,
+    );
+  }
+
+  //$paytm_args_array[] = "<input type='hidden' name='txnDate' value='". date('Y-m-d H:i:s') ."'/>";
+  //$paytm_args_array[] = "<input type='hidden' name='CHECKSUMHASH' value='". $checksum ."'/>";	
+
+
+  $form['actions'] = array('#type' => 'actions');
+  $form['actions']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => variable_get('uc_paytm_checkout_button', t('submit Order')),
+  );
+
+  return $form;
+}
+
+function _paytm_post_url($type) {
+   if  (variable_get('uc_paytm_checkout_mode', '')=='TEST'){	
+	return 'https://test.paytm.in/oltp-web/processTransaction';
+   }
+   else
+   {
+	return 'https://secure.paytm.in/oltp-web/processTransaction';
+   }
+}
