@@ -161,7 +161,7 @@ function uc_payment_uc_method_paytm($op, &$order, $form = NULL, &$form_state = N
         '#type' => 'textfield',
         '#title' => t('Website Name'),
         '#description' => t('The WebSite Name provided by paytm with your Account settings.'),
-        '#default_value' => variable_get('uc_paytm_secret_key', 'paytmwebsitename'),
+        '#default_value' => variable_get('uc_paytm_website_name', 'paytmwebsitename'),
         '#size' => 16,
       );
 
@@ -201,6 +201,16 @@ function uc_payment_uc_method_paytm($op, &$order, $form = NULL, &$form_state = N
         ),
         '#default_value' => variable_get('uc_paytm_checkout_mode', 'TEST'),
       );
+	  $form['uc_paytm_callback_mode'] = array(
+        '#type' => 'select',
+        '#title' => t('Enable Callback URL'),
+        '#description' => t('Select NO to disable the callback url'),
+        '#options' => array(
+          'YES' => t('YES'),
+          'NO' => t('NO'),
+        ),
+        '#default_value' => variable_get('uc_paytm_callback_mode', 'YES'),
+      );
       return $form;
   }
 }
@@ -230,6 +240,7 @@ function uc_paytm_form($form, $form_state, $order) {
 	
 	
 	$mode  =variable_get('uc_paytm_checkout_mode', '');
+	$callback  =variable_get('uc_paytm_callback_mode', ''); 
 
 	$hash = $secretkey."|".$account_id."|". $amount."|".$ref_no."|".$return_url."|".$mode ;
 	$secure_hash = md5($hash);
@@ -241,8 +252,13 @@ function uc_paytm_form($form, $form_state, $order) {
 	    "TXN_AMOUNT" => uc_currency_format($order->order_total, FALSE, FALSE, '.'),
 	    "CHANNEL_ID" =>  variable_get('uc_paytm_channel_id', ''),
 	    "INDUSTRY_TYPE_ID" =>  variable_get('uc_paytm_industry_type', ''),
-	    "WEBSITE" =>  variable_get('uc_paytm_website_name', '')
+	    "WEBSITE" =>  variable_get('uc_paytm_website_name', ''),
         );
+		
+		if($callback == 'YES')
+		{
+			$checksum_variables["CALLBACK_URL"] = url('cart/paytm/complete/',array('absolute' => TRUE));
+		}
    $checksum = getChecksumFromArray($checksum_variables, variable_get('uc_paytm_secret_key', '')); 	
 
  /* $data = array(
@@ -284,10 +300,14 @@ function uc_paytm_form($form, $form_state, $order) {
     "CHANNEL_ID" =>  variable_get('uc_paytm_channel_id', ''),
     "INDUSTRY_TYPE_ID" =>  variable_get('uc_paytm_industry_type', ''),
     "WEBSITE" =>  variable_get('uc_paytm_website_name', ''),
-    "txnDate" =>  date('Y-m-d H:i:s'),
-    'return_url' => url('cart/paytm/complete/',array('absolute' => TRUE)). $order->order_id.'/DR={DR}', 
-    "CHECKSUMHASH" => $checksum
+    "txnDate" =>  date('Y-m-d H:i:s'),    
+    "CHECKSUMHASH" => $checksum,
 );
+
+	if($callback == 'YES')
+	{
+		$post_variables["CALLBACK_URL"] = url('cart/paytm/complete/',array('absolute' => TRUE));
+	}
 
   $i = 0;
   global $desc;
@@ -325,7 +345,7 @@ function uc_paytm_form($form, $form_state, $order) {
 
 function _paytm_post_url($type) {
    if  (variable_get('uc_paytm_checkout_mode', '')=='TEST'){	
-	return 'https://test.paytm.in/oltp-web/processTransaction';
+	return 'https://pguat.paytm.com/oltp-web/processTransaction';
    }
    else
    {
