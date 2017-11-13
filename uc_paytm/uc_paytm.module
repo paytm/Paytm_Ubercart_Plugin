@@ -248,7 +248,7 @@ function uc_paytm_form($form, $form_state, $order) {
 	$checksum_variables = Array(
 	    "MID" =>  variable_get('uc_paytm_accountid', ''),
 	    "ORDER_ID" =>  $order->order_id,
-	    "CUST_ID" => $order->billing_first_name,
+	    "CUST_ID" => $order->primary_email,
 	    "TXN_AMOUNT" => uc_currency_format($order->order_total, FALSE, FALSE, '.'),
 	    "CHANNEL_ID" =>  variable_get('uc_paytm_channel_id', ''),
 	    "INDUSTRY_TYPE_ID" =>  variable_get('uc_paytm_industry_type', ''),
@@ -295,7 +295,7 @@ function uc_paytm_form($form, $form_state, $order) {
   $post_variables = Array(
     "MID" =>  variable_get('uc_paytm_accountid', ''),
     "ORDER_ID" =>  $order->order_id,
-    "CUST_ID" => $order->billing_first_name,
+    "CUST_ID" => $order->primary_email,
     "TXN_AMOUNT" => uc_currency_format($order->order_total, FALSE, FALSE, '.'),
     "CHANNEL_ID" =>  variable_get('uc_paytm_channel_id', ''),
     "INDUSTRY_TYPE_ID" =>  variable_get('uc_paytm_industry_type', ''),
