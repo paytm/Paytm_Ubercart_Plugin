@@ -191,7 +191,19 @@ function uc_payment_uc_method_paytm($op, &$order, $form = NULL, &$form_state = N
         '#description' => t('Provide paytm specific text for the submit button on the order review page.'),
         '#default_value' => variable_get('uc_paytm_checkout_button', t('Submit Order')),
       );
-      $form['uc_paytm_checkout_mode'] = array(
+      $form['uc_paytm_checkout_button'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Order review submit button text'),
+        '#description' => t('Provide paytm specific text for the submit button on the order review page.'),
+        '#default_value' => variable_get('uc_paytm_checkout_button', t('Submit Order')),
+      );
+      $form['uc_paytm_transaction_url'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Payment Transaction URL'),
+        '#description' => t('Provide paytm specific url for the submit payment details.'),
+        '#default_value' => variable_get('uc_paytm_transaction_url', 'paytmtransactionurl'),
+      );
+      /*$form['uc_paytm_checkout_mode'] = array(
         '#type' => 'select',
         '#title' => t('paytm checkout mode'),
         '#description' => t('Mode of Transaction. Select TEST for Testing and select LIVE when your account is made LIVE from paytm'),
@@ -200,7 +212,7 @@ function uc_payment_uc_method_paytm($op, &$order, $form = NULL, &$form_state = N
           'LIVE' => t('LIVE'),
         ),
         '#default_value' => variable_get('uc_paytm_checkout_mode', 'TEST'),
-      );
+      );*/
       return $form;
   }
 }
@@ -229,7 +241,8 @@ function uc_paytm_form($form, $form_state, $order) {
 
 	
 	
-	$mode  =variable_get('uc_paytm_checkout_mode', '');
+	// $mode  =variable_get('uc_paytm_checkout_mode', '');
+  $transaction_url  =variable_get('uc_paytm_transaction_url', '');
 
 	$hash = $secretkey."|".$account_id."|". $amount."|".$ref_no."|".$return_url."|".$mode ;
 	$secure_hash = md5($hash);
@@ -301,7 +314,8 @@ function uc_paytm_form($form, $form_state, $order) {
     $data['description'] .= "-" . $product->title;
   }
 
-  $form['#action'] = _paytm_post_url(variable_get('uc_paytm_checkout_mode', 'TEST'));
+  $form['#action'] = variable_get('uc_paytm_transaction_url', '');
+  // $form['#action'] = _paytm_post_url(variable_get('uc_paytm_checkout_mode', 'TEST'));
 
   foreach ($post_variables as $name => $value) {
     $form[$name] = array(
@@ -324,11 +338,17 @@ function uc_paytm_form($form, $form_state, $order) {
 }
 
 function _paytm_post_url($type) {
-   if  (variable_get('uc_paytm_checkout_mode', '')=='TEST'){	
-	return 'https://test.paytm.in/oltp-web/processTransaction';
-   }
-   else
-   {
-	return 'https://secure.paytm.in/oltp-web/processTransaction';
-   }
+  /*  19751/17Jan2018 */
+    /*if  (variable_get('uc_paytm_checkout_mode', '')=='TEST'){ 
+      return 'https://pguat.paytm.com/oltp-web/processTransaction';
+    } else {
+      return 'https://secure.paytm.in/oltp-web/processTransaction';
+    }*/
+
+    /*if  (variable_get('uc_paytm_checkout_mode', '')=='TEST'){ 
+      return 'https://securegw-stage.paytm.in/theia/processTransaction';
+    } else {
+      return 'https://securegw.paytm.in/theia/processTransaction';
+    }*/
+  /*  19751/17Jan2018 end */
 }
