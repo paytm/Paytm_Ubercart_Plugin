@@ -11,3 +11,12 @@ The aim of this document is to explain the procedure of installation and configu
  3. Payment method title will be shown on checkout page above Paytm logo and Order review submit button text is text of sumbit button.
  4. Select paytm checkout mode LIVE/ TEST based on LIVE/STAGGING setup.
  5. Paytm PG is now reflected as a payment method on the Checkout Page.
+
+# Paytm PG URL Details
+	staging	
+		Transaction URL             => https://securegw-stage.paytm.in/theia/processTransaction
+		Transaction Status Url      => https://securegw-stage.paytm.in/merchant-status/getTxnStatus
+
+	Production
+		Transaction URL             => https://securegw.paytm.in/theia/processTransaction
+		Transaction Status Url      => https://securegw.paytm.in/merchant-status/getTxnStatus
