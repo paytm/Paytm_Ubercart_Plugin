@@ -2,7 +2,7 @@
 /*
 *	uc_paytm.module
 *	Upgraded to support: Drupal 7 & Ubercart 3.0
-*	Updated by : Karthi perumal, Samvit Technologies.
+*	Updated by : Integration Dev PaytmPayments.
 *	date : 19-09-2011
 *
 * @file
@@ -346,9 +346,9 @@ function _paytm_post_url($type) {
     }*/
 
     /*if  (variable_get('uc_paytm_checkout_mode', '')=='TEST'){ 
-      return 'https://securegw-stage.paytm.in/theia/processTransaction';
+      return 'https://securestage.paytmpayments.com/theia/processTransaction';
     } else {
-      return 'https://securegw.paytm.in/theia/processTransaction';
+      return 'https://secure.paytmpayments.com/theia/processTransaction';
     }*/
   /*  19751/17Jan2018 end */
 }

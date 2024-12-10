@@ -14,9 +14,9 @@ The aim of this document is to explain the procedure of installation and configu
 
 # Paytm PG URL Details
 	staging	
-		Transaction URL             => https://securegw-stage.paytm.in/theia/processTransaction
-		Transaction Status Url      => https://securegw-stage.paytm.in/merchant-status/getTxnStatus
+		Transaction URL             => https://securestage.paytmpayments.com/theia/processTransaction
+		Transaction Status Url      => https://securestage.paytmpayments.com/merchant-status/getTxnStatus
 
 	Production
-		Transaction URL             => https://securegw.paytm.in/theia/processTransaction
-		Transaction Status Url      => https://securegw.paytm.in/merchant-status/getTxnStatus
+		Transaction URL             => https://secure.paytmpayments.com/theia/processTransaction
+		Transaction Status Url      => https://secure.paytmpayments.com/merchant-status/getTxnStatus
